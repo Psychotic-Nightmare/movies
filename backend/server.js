@@ -1,6 +1,7 @@
 const express = require('express');
 const AWS = require('aws-sdk');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -16,7 +17,13 @@ AWS.config.update({
 const cognito = new AWS.CognitoIdentityServiceProvider();
 
 // Middleware
+app.use(cors());
 app.use(bodyParser.json());
+
+// Mock data for movies
+const movies = [
+    // Add your movie data here
+];
 
 // Routes
 app.get('/', (req, res) => {
@@ -74,6 +81,48 @@ app.post('/login', (req, res) => {
     });
 });
 
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+app.post('/confirm', (req, res) => {
+    const { username, code } = req.body;
+
+    const params = {
+        ClientId: process.env.COGNITO_CLIENT_ID,
+        Username: username,
+        ConfirmationCode: code
+    };
+
+    cognito.confirmSignUp(params, (err, data) => {
+        if (err) {
+            console.error(err);
+            res.status(400).send(err);
+        } else {
+            res.send(data);
+        }
+    });
 });
+
+app.post('/profile', (req, res) => {
+    const { name, dob, favoriteMovie } = req.body;
+
+    // Save the profile information in your database
+    // This is just a mock, replace it with actual database operation
+    console.log(`Profile information for ${name}: DOB - ${dob}, Favorite Movie - ${favoriteMovie}`);
+
+    res.send({ status: 'Profile information saved successfully' });
+});
+
+app.get('/movies', (req, res) => {
+    const TMDB_API_KEY = process.env.TMDB_API_KEY; // Access the API key from .env file
+
+    axios.get(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&language=en-US&page=1`)
+        .then(response => {
+            res.send(response.data.results);
+        })
+        .catch(error => {
+            console.error(error);
+            res.status(500).send('Error fetching movies');
+        });
+});
+  
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
